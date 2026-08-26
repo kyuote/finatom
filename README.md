@@ -9,7 +9,7 @@ FinFlow is a high-performance, microservices-based fintech platform (similar to 
 - Asynchronous Notifications: Event-driven system alerts triggered by account activities and ledger updates.
 
 ## 🛠 Tech Stack
-- Backend: Java 21, Spring Boot 3.x, Spring Cloud
+- Backend: Java 25, Spring Boot 3.x, Spring Cloud
 - Data & Storage: PostgreSQL, Redis (Caching & Distributed Locks), Flyway (Database Migrations)
 - Messaging: Apache Kafka (Event-driven asynchronous communication)
 - Testing: JUnit 5, Mockito, Testcontainers (Spinning up real DB & Kafka instances in Docker for integration tests)
