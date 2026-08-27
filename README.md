@@ -1,6 +1,6 @@
-# FinFlow 💸
+# FinAtom 💸
 
-FinFlow is a high-performance, microservices-based fintech platform (similar to Stripe or Revolut). This project serves as a production-ready demonstration of distributed systems design, strict transactional consistency, fault tolerance, and enterprise-grade observability.
+FinAtom is a high-performance, microservices-based fintech platform (similar to Stripe or Revolut). This project serves as a production-ready demonstration of distributed systems design, strict transactional consistency, fault tolerance, and enterprise-grade observability.
 
 ## 🚀 Core Features (Business Logic)
 - Multi-Currency Wallets: User account creation, balance management, and real-time currency exchange.
@@ -9,7 +9,7 @@ FinFlow is a high-performance, microservices-based fintech platform (similar to 
 - Asynchronous Notifications: Event-driven system alerts triggered by account activities and ledger updates.
 
 ## 🛠 Tech Stack
-- Backend: Java 25, Spring Boot 3.x, Spring Cloud
+- Backend: Java 21, Spring Boot 3.x, Spring Cloud
 - Data & Storage: PostgreSQL, Redis (Caching & Distributed Locks), Flyway (Database Migrations)
 - Messaging: Apache Kafka (Event-driven asynchronous communication)
 - Testing: JUnit 5, Mockito, Testcontainers (Spinning up real DB & Kafka instances in Docker for integration tests)
