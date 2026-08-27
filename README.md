@@ -69,18 +69,4 @@ curl http://localhost:8081/health
 # {"status":"UP"}
 ```
 
----
-
-## 🔍 Why does the project show grey/red in IntelliJ IDEA?
-
-We don't use Spring Boot — the project is built on plain Gradle. IntelliJ doesn't always auto-detect custom build scripts and may treat source files as plain text without project context.
-
-**Fix in 2 steps:**
-1. Open the **Gradle** tab on the right side of the IDE.
-2. Click the circular arrows **Reload All Gradle Projects** (⟳).
-
-IntelliJ will re-import the project, pull all dependencies from `build.gradle`, and enable syntax highlighting, autocompletion, and navigation.
-
----
-
 *Project is under active development.*
