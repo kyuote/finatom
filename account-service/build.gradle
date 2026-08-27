@@ -1,0 +1,79 @@
+plugins {
+    id 'java'
+    id 'groovy'
+    id 'application'
+    id 'org.jooq.jooq-codegen-gradle'
+}
+
+application {
+    mainClass = 'com.finatom.account.AccountApplication'
+}
+
+group = 'com.finatom'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // 🚀 Легковесный веб-фреймворк (в духе SparkJava / Javalin)
+    implementation("io.javalin:javalin:7.2.3")
+    implementation("org.slf4j:slf4j-simple:2.0.12")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.0")
+
+    // 🗄 База данных и jOOQ
+    implementation("org.jooq:jooq:3.19.5")
+    implementation("org.postgresql:postgresql:42.7.2")
+    implementation("org.flywaydb:flyway-core:10.10.0")
+    implementation("org.flywaydb:flyway-database-postgresql:10.10.0")
+    implementation("com.zaxxer:HikariCP:5.1.0")
+
+    // ⚡ Redis клиент
+    implementation("redis.clients:jedis:5.1.2")
+
+    // ⚙️ Конфигурация из файла (application.conf)
+    implementation("com.typesafe:config:1.4.3")
+
+    // 🧪 Тестирование (Spock Framework вместо JUnit)
+    testImplementation(platform("org.spockframework:spock-bom:2.4-groovy-4.0"))
+    testImplementation("org.spockframework:spock-core")
+    testImplementation("org.apache.groovy:groovy")
+}
+
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+test {
+    useJUnitPlatform() // Spock работает поверх JUnit платформы
+}
+
+// Конфигурация генератора jOOQ (он прочитает нашу БД и создаст Java-классы для SQL)
+jooq {
+    configuration {
+        logging = org.jooq.meta.jaxb.Logging.WARN
+        jdbc {
+            driver = 'org.postgresql.Driver'
+            url = 'jdbc:postgresql://localhost:5432/finatom_ledger'
+            user = 'finatom_user'
+            password = 'finatom_password'
+        }
+        generator {
+            name = 'org.jooq.codegen.DefaultGenerator'
+            database {
+                name = 'org.jooq.meta.postgres.PostgresDatabase'
+                inputSchema = 'public'
+                // Исключаем системную таблицу Flyway из генерации кода
+                excludes = 'flyway_schema_history'
+            }
+            target {
+                packageName = 'com.finatom.account.jooq'
+                directory = 'build/generated-sources/jooq'
+            }
+        }
+    }
+}

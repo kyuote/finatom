@@ -1,0 +1,12 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+    plugins {
+        id 'org.jooq.jooq-codegen-gradle' version '3.19.5'
+    }
+}
+
+rootProject.name = 'finatom'
+include 'account-service'
