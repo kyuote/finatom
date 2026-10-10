@@ -10,3 +10,6 @@ pluginManagement {
 
 rootProject.name = 'finatom'
 include 'account-service'
+include 'payment-service'
+include 'antifraud-service'
+include 'notification-service'
