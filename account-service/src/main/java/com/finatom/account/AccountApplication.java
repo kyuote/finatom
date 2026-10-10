@@ -1,44 +1,47 @@
 package com.finatom.account;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.finatom.account.controller.AccountController;
+import com.finatom.account.repository.AccountRepository;
+import com.finatom.account.repository.WalletRepository;
+import com.finatom.account.service.AccountService;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import io.javalin.Javalin;
-import io.javalin.apibuilder.ApiBuilder;
 import org.flywaydb.core.Flyway;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPoolConfig;
+
+import static spark.Spark.exception;
+import static spark.Spark.port;
 
 public class AccountApplication {
+    public static void main(String[] args) {
+        Config cfg = ConfigFactory.load();
 
-  public static void main(String[] args) {
-    Config cfg = ConfigFactory.load();
+        HikariConfig hikariConfig = new HikariConfig();
+        hikariConfig.setJdbcUrl(cfg.getString("db.url"));
+        hikariConfig.setUsername(cfg.getString("db.user"));
+        hikariConfig.setPassword(cfg.getString("db.password"));
+        hikariConfig.setMaximumPoolSize(cfg.getInt("db.pool-size"));
 
-    // DataSource
-    HikariConfig hikari = new HikariConfig();
-    hikari.setJdbcUrl(cfg.getString("db.url"));
-    hikari.setUsername(cfg.getString("db.user"));
-    hikari.setPassword(cfg.getString("db.password"));
-    hikari.setMaximumPoolSize(cfg.getInt("db.pool-size"));
-    HikariDataSource dataSource = new HikariDataSource(hikari);
+        HikariDataSource dataSource = new HikariDataSource(hikariConfig);
 
-    // Flyway migrations
-    Flyway.configure().dataSource(dataSource).load().migrate();
+        Flyway.configure().dataSource(dataSource).load().migrate();
 
-    // Redis
-    JedisPool jedisPool = new JedisPool(
-      new JedisPoolConfig(),
-      cfg.getString("redis.host"),
-      cfg.getInt("redis.port")
-    );
+        AccountRepository accountRepository = new AccountRepository(dataSource);
+        WalletRepository walletRepository   = new WalletRepository(dataSource);
+        AccountService accountService       = new AccountService(accountRepository, walletRepository);
+        ObjectMapper mapper = new ObjectMapper()
+                .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
+                .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        AccountController controller        = new AccountController(accountService, mapper);
 
-    // HTTP server
-    int port = cfg.getInt("server.port");
-    Javalin.create(config -> {
-      config.routes.apiBuilder(() -> {
-        ApiBuilder.get("/health", ctx -> ctx.result("{\"status\":\"UP\"}").contentType("application/json"));
-      });
-    }).start(port);
-  }
+        port(cfg.getInt("server.port"));
+        exception(Exception.class, (e, req, res) -> {
+            e.printStackTrace();
+            res.status(500);
+            res.body(e.getClass().getSimpleName() + ": " + e.getMessage());
+        });
+        controller.registerRoutes();
+    }
 }

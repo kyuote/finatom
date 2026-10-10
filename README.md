@@ -1,72 +1,87 @@
 # FinAtom 💸
 
-FinAtom is a high-performance fintech platform built on microservices, in the spirit of Stripe / Revolut. The project demonstrates production-ready distributed systems architecture: strict transactional consistency, fault tolerance, and enterprise-grade observability.
-
-## 🚀 Core Business Logic
-
-- **Multi-Currency Wallets** — account creation, balance management, real-time currency exchange.
-- **Transaction Engine** — P2P transfers with ACID guarantees and double-spend protection via Idempotency Keys.
-- **Antifraud Scoring** — automated transaction checks against velocity rules and limits.
-- **Async Notifications** — event-driven alerts triggered by account activity.
+FinAtom is a core banking engine that simulates the payment infrastructure behind modern neobanks like Revolut and Wise.
 
 ---
 
-## 🛠 Tech Stack
+## What It Does
 
-| Layer | Technology | Why |
-|---|---|---|
-| **Language** | Java 21 + Virtual Threads | Handles millions of transactions without reactive complexity — written like sync code, scales like async |
-| **Build** | Gradle (Monorepo) | Single repository for all microservices, flexible without XML |
-| **Database** | PostgreSQL | Reliable ACID storage — money needs transactions |
-| **Connection Pool** | HikariCP | The fastest JVM connection pool — minimal overhead |
-| **Data Access** | jOOQ | No Hibernate. Strictly typed SQL directly in Java — predictable and fast |
-| **DB Migrations** | Flyway | Version-controlled schema — every change is tracked |
-| **Web Server** | Javalin 7 | Ultra-lightweight microframework instead of heavy Spring Boot |
-| **Cache** | Redis + Jedis | In-memory cache and ephemeral state — idempotency keys, rate limiting |
-| **Testing** | Spock Framework | BDD tests in Groovy (given / when / then) — read like documentation |
-| **Config** | Typesafe Config | Structured `application.conf` instead of hardcoded values |
-| **Infrastructure** | Docker Compose | Spin up PostgreSQL + Redis with a single command |
+- User registers → gets multi-currency wallets (USD, EUR, GBP)
+- Top up balance via mocked external bank
+- Send money to another user (P2P transfer)
+- Auto currency conversion if wallets differ
+- Every payment is checked by antifraud before execution
+- Receiver gets an async notification via Kafka event
 
 ---
 
-## 📐 Architecture
+## Architecture
 
-The system is split into isolated domain contexts (DDD):
+Four independent microservices communicating over Kafka:
 
-- **Account Service** — user management, multi-currency balances, and the core ledger.
-- **Transaction Service** — payments, P2P transfers, and core banking operations.
-- **Antifraud Service** — risk scoring before a transaction is executed.
-- **Notification Service** — consumes ledger events and pushes alerts to users.
-
-*(Architecture diagram coming soon)*
-
----
-
-## ⚡ Quick Start
-
-### 1. Start infrastructure
-
-```bash
-docker compose up -d
+```
+account-service      — users, wallets, balances
+payment-service      — transfers, currency conversion, ledger
+antifraud-service    — fraud scoring, velocity rules, blocking
+notification-service — async event-driven alerts
 ```
 
-Starts **PostgreSQL** on `5432` and **Redis** on `6379`.
+Event flow:
 
-### 2. Build and run Account Service
+```
+payment-service  →  payment.created   →  antifraud-service
+antifraud-service →  payment.approved  →  payment-service
+payment-service  →  payment.completed →  notification-service
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Java 21 + Virtual Threads |
+| Web | SparkJava |
+| Database | PostgreSQL 16 |
+| SQL | jOOQ (no ORM — typed SQL) |
+| Migrations | Flyway |
+| Connection Pool | HikariCP |
+| Cache / State | Redis (idempotency keys, rate limiting) |
+| Messaging | Apache Kafka |
+| Testing | Spock Framework (BDD — given / when / then) |
+| Config | Typesafe Config |
+| Infrastructure | Docker Compose + Kubernetes manifests |
+
+---
+
+## Key Technical Problems Solved
+
+**Idempotency** — duplicate payment request never creates a second transfer (Redis-backed idempotency keys)
+
+**Double-spend protection** — pessimistic locking in PostgreSQL prevents concurrent overdrafts
+
+**Audit trail** — every balance change is recorded in an append-only ledger
+
+**Velocity rules** — more than 5 payments per minute triggers automatic fraud block
+
+**Currency conversion** — transfers between different currency wallets auto-convert at mocked exchange rates
+
+---
+
+## Quick Start
 
 ```bash
+# Start infrastructure (PostgreSQL, Redis, Kafka)
+docker compose up -d
+
+# Run account-service
 ./gradlew :account-service:run
 ```
 
-Or in IntelliJ IDEA: open the **Gradle** tab → click **Reload** (⟳) → run `account-service → Tasks → application → run`.
+API available at `http://localhost:8081`
 
-Service starts on **http://localhost:8081**
+---
 
-### 3. Health check
+## Project Status
 
-```bash
-curl http://localhost:8081/health
-# {"status":"UP"}
-```
-
-*Project is under active development.*
+Under active development.
