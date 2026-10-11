@@ -1,6 +1,8 @@
 package com.finatom.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import redis.clients.jedis.JedisPool;
 
 import java.math.BigDecimal;
@@ -18,11 +20,17 @@ public class ExchangeRateService {
     private final JedisPool jedisPool;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
+    private final Counter cacheHits;
+    private final Counter cacheMisses;
 
-    public ExchangeRateService(JedisPool jedisPool) {
+    public ExchangeRateService(JedisPool jedisPool, MeterRegistry registry) {
         this.jedisPool = jedisPool;
         this.httpClient = HttpClient.newHttpClient();
         this.objectMapper = new ObjectMapper();
+        this.cacheHits   = Counter.builder("exchange_rate.cache.hits.total")
+            .description("Exchange rate Redis cache hits").register(registry);
+        this.cacheMisses = Counter.builder("exchange_rate.cache.misses.total")
+            .description("Exchange rate Redis cache misses (API call made)").register(registry);
     }
 
     public BigDecimal convert(BigDecimal amount, String from, String to) {
@@ -36,9 +44,13 @@ public class ExchangeRateService {
 
         try (var jedis = jedisPool.getResource()) {
             String cached = jedis.get(cacheKey);
-            if (cached != null) return new BigDecimal(cached);
+            if (cached != null) {
+                cacheHits.increment();
+                return new BigDecimal(cached);
+            }
         }
 
+        cacheMisses.increment();
         BigDecimal rate = fetchRateFromApi(from, to);
 
         try (var jedis = jedisPool.getResource()) {

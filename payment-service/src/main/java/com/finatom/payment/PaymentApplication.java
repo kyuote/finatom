@@ -6,10 +6,17 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.finatom.payment.client.AccountServiceClient;
 import com.finatom.payment.controller.PaymentController;
 import com.finatom.payment.messaging.PaymentEventPublisher;
+import com.finatom.payment.metrics.PaymentMetrics;
 import com.finatom.payment.repository.WalletRepository;
 import com.finatom.payment.service.ExchangeRateService;
 import com.finatom.payment.service.IdempotencyService;
 import com.finatom.payment.service.PaymentService;
+import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
+import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import com.typesafe.config.Config;
@@ -31,6 +38,12 @@ public class PaymentApplication {
     public static void main(String[] args) {
         Config cfg = ConfigFactory.load();
 
+        PrometheusMeterRegistry registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+        new JvmMemoryMetrics().bindTo(registry);
+        new JvmGcMetrics().bindTo(registry);
+        new JvmThreadMetrics().bindTo(registry);
+        new ProcessorMetrics().bindTo(registry);
+
         HikariConfig hikariConfig = new HikariConfig();
         hikariConfig.setJdbcUrl(cfg.getString("db.url"));
         hikariConfig.setUsername(cfg.getString("db.user"));
@@ -48,7 +61,7 @@ public class PaymentApplication {
 
         WalletRepository walletRepository       = new WalletRepository(dataSource);
         IdempotencyService idempotencyService   = new IdempotencyService(jedisPool);
-        ExchangeRateService exchangeRateService = new ExchangeRateService(jedisPool);
+        ExchangeRateService exchangeRateService = new ExchangeRateService(jedisPool, registry);
         AccountServiceClient accountServiceClient = new AccountServiceClient(
             cfg.getString("account-service.grpc-host"),
             cfg.getInt("account-service.grpc-port")
@@ -61,9 +74,10 @@ public class PaymentApplication {
         kafkaProps.put("acks", "all");
         PaymentEventPublisher eventPublisher = new PaymentEventPublisher(new KafkaProducer<>(kafkaProps));
 
+        PaymentMetrics paymentMetrics = new PaymentMetrics(registry);
         PaymentService paymentService = new PaymentService(
             dsl, walletRepository, idempotencyService, exchangeRateService,
-            accountServiceClient, eventPublisher
+            accountServiceClient, eventPublisher, paymentMetrics
         );
 
         ObjectMapper mapper = new ObjectMapper()
@@ -74,6 +88,10 @@ public class PaymentApplication {
 
         port(cfg.getInt("server.port"));
         get("/health", (req, res) -> "OK");
+        get("/metrics", (req, res) -> {
+            res.type("text/plain; version=0.0.4");
+            return registry.scrape();
+        });
         exception(Exception.class, (e, req, res) -> {
             e.printStackTrace();
             res.status(500);
