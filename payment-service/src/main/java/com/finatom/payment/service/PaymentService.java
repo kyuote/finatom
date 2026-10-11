@@ -3,7 +3,9 @@ package com.finatom.payment.service;
 import com.finatom.payment.client.KycValidator;
 import com.finatom.payment.domain.EntryType;
 import com.finatom.payment.domain.Payment;
+import com.finatom.payment.domain.PaymentCompletedEvent;
 import com.finatom.payment.domain.PaymentStatus;
+import com.finatom.payment.messaging.PaymentEventPublisher;
 import com.finatom.payment.repository.WalletRepository;
 import org.jooq.DSLContext;
 import org.jooq.exception.DataAccessException;
@@ -25,17 +27,20 @@ public class PaymentService {
     private final IdempotencyService idempotencyService;
     private final ExchangeRateService exchangeRateService;
     private final KycValidator kycValidator;
+    private final PaymentEventPublisher eventPublisher;
 
     public PaymentService(DSLContext dsl,
                           WalletRepository walletRepository,
                           IdempotencyService idempotencyService,
                           ExchangeRateService exchangeRateService,
-                          KycValidator kycValidator) {
+                          KycValidator kycValidator,
+                          PaymentEventPublisher eventPublisher) {
         this.dsl = dsl;
         this.walletRepository = walletRepository;
         this.idempotencyService = idempotencyService;
         this.exchangeRateService = exchangeRateService;
         this.kycValidator = kycValidator;
+        this.eventPublisher = eventPublisher;
     }
 
     public Payment createPayment(UUID fromWalletId, UUID toWalletId,
@@ -74,7 +79,11 @@ public class PaymentService {
                 markCompleted(tx, paymentId);
                 return findPaymentByKey(tx, idempotencyKey);
             });
+            // best-effort: Redis and Kafka failures do not fail a completed payment
             idempotencyService.store(idempotencyKey, payment.id().toString());
+            eventPublisher.publish(new PaymentCompletedEvent(
+                payment.id(), fromWalletId, toWalletId, amount, currency, payment.createdAt()
+            ));
             return payment;
         } catch (DataAccessException e) {
             if (isUniqueViolation(e)) return findPaymentByKey(dsl, idempotencyKey);

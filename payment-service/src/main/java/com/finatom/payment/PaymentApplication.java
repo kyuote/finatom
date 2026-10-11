@@ -5,10 +5,13 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.finatom.payment.client.AccountServiceClient;
 import com.finatom.payment.controller.PaymentController;
+import com.finatom.payment.messaging.PaymentEventPublisher;
 import com.finatom.payment.repository.WalletRepository;
 import com.finatom.payment.service.ExchangeRateService;
 import com.finatom.payment.service.IdempotencyService;
 import com.finatom.payment.service.PaymentService;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.zaxxer.hikari.HikariConfig;
@@ -57,8 +60,16 @@ public class PaymentApplication {
             cfg.getInt("account-service.grpc-port")
         );
 
+        var kafkaProps = new java.util.Properties();
+        kafkaProps.put("bootstrap.servers", cfg.getString("kafka.bootstrap-servers"));
+        kafkaProps.put("key.serializer", StringSerializer.class.getName());
+        kafkaProps.put("value.serializer", StringSerializer.class.getName());
+        kafkaProps.put("acks", "all");
+        PaymentEventPublisher eventPublisher = new PaymentEventPublisher(new KafkaProducer<>(kafkaProps));
+
         PaymentService paymentService = new PaymentService(
-            dsl, walletRepository, idempotencyService, exchangeRateService, accountServiceClient
+            dsl, walletRepository, idempotencyService, exchangeRateService,
+            accountServiceClient, eventPublisher
         );
 
         ObjectMapper mapper = new ObjectMapper()
