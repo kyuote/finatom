@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: finatom
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      initContainers:
+        - name: wait-for-account-schema
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until PGPASSWORD=$DB_PASSWORD psql -h postgres -U $DB_USER -d finatom_ledger -c "SELECT 1 FROM wallets LIMIT 1;" > /dev/null 2>&1; do
+                echo "Waiting for wallets table..."; sleep 3;
+              done
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: finatom-db-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: finatom-db-secret
+                  key: password
+      containers:
+        - name: payment-service
+          image: finatom/payment-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8082
+          env:
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: finatom-config
+                  key: DB_URL
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: finatom-db-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: finatom-db-secret
+                  key: password
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: finatom-config
+                  key: REDIS_HOST
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: finatom-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: ACCOUNT_SERVICE_GRPC_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: finatom-config
+                  key: ACCOUNT_SERVICE_GRPC_HOST
+            - name: ACCOUNT_SERVICE_GRPC_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: finatom-config
+                  key: ACCOUNT_SERVICE_GRPC_PORT
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: finatom
+spec:
+  selector:
+    app: payment-service
+  ports:
+    - port: 8082

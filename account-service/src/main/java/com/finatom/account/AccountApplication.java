@@ -20,6 +20,7 @@ import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
 
 import static spark.Spark.exception;
+import static spark.Spark.get;
 import static spark.Spark.port;
 
 public class AccountApplication {
@@ -34,7 +35,7 @@ public class AccountApplication {
         hikariConfig.setMaximumPoolSize(cfg.getInt("db.pool-size"));
         HikariDataSource dataSource = new HikariDataSource(hikariConfig);
 
-        Flyway.configure().dataSource(dataSource).load().migrate();
+        Flyway.configure().dataSource(dataSource).outOfOrder(true).load().migrate();
 
         DSLContext dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
 
@@ -57,6 +58,7 @@ public class AccountApplication {
         Runtime.getRuntime().addShutdownHook(new Thread(grpcServer::shutdown));
 
         port(cfg.getInt("server.port"));
+        get("/health", (req, res) -> "OK");
         exception(Exception.class, (e, req, res) -> {
             e.printStackTrace();
             res.status(500);
