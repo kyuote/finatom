@@ -4,6 +4,14 @@ Core banking engine simulating payment infrastructure behind modern neobanks (Re
 
 ---
 
+## Prerequisites
+
+- Java 21
+- Docker Desktop with Kubernetes enabled
+- `make`
+
+---
+
 ## Architecture
 
 ```mermaid
