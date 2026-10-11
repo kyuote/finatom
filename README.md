@@ -193,6 +193,22 @@ erDiagram
 
 ---
 
+## Observability
+
+77 000 payment requests processed under k6 load test (ramp 1→70 VUs, 12 min):
+
+![Grafana Dashboard](docs/grafana-dashboard.webp)
+
+- **76 985** completed payments, **14** failed (99.98% success rate)
+- Peak throughput **~180 req/s**, latency p99 < 800ms at spike
+- JVM heap stable at 8–16 MiB — no memory leaks
+
+Structured access logs shipped via Promtail → Loki, queryable in Grafana Explore:
+
+![Grafana Loki Logs](docs/grafana-logs.webp)
+
+---
+
 ## Services
 
 | Service | Port | Responsibilities |
