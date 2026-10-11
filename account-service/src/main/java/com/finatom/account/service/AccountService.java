@@ -2,6 +2,8 @@ package com.finatom.account.service;
 
 import com.finatom.account.domain.Account;
 import com.finatom.account.domain.Wallet;
+import com.finatom.account.exception.AccountNotFoundException;
+import com.finatom.account.exception.WalletNotFoundException;
 import com.finatom.account.repository.AccountRepository;
 import com.finatom.account.repository.WalletRepository;
 
@@ -27,7 +29,7 @@ public class AccountService {
     }
 
     public Account getAccount(UUID id) {
-        return accountRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Account not found: " + id));
+        return accountRepository.findById(id).orElseThrow(() -> new AccountNotFoundException(id));
     }
 
     public List<Wallet> getWallets(UUID accountId) {
