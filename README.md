@@ -1,6 +1,6 @@
 # FinAtom
 
-Core banking engine simulating payment infrastructure behind modern neobanks (Revolut / Wise style). Built as a portfolio project to demonstrate production-grade microservices patterns in Java.
+Core banking engine simulating payment infrastructure behind modern neobanks. Built as a portfolio project to demonstrate production-grade microservices patterns in Java.
 
 ---
 
