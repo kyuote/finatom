@@ -257,13 +257,11 @@ java -jar payment-service/build/libs/payment-service-1.0-SNAPSHOT-all.jar
 ### Kubernetes (Docker Desktop)
 
 ```bash
-kubectl apply -f k8s/
-```
-
-### Load Testing
-
-```bash
-k6 run k6/load-test.js
+make docker-build   # build all images
+make deploy         # apply k8s manifests
+make port-forward   # expose services locally
+make load-test      # run k6 load test via Docker
+make status         # show pod status
 ```
 
 ---
