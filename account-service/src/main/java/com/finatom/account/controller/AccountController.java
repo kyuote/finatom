@@ -6,8 +6,11 @@ import com.finatom.account.service.AccountService;
 import java.util.Map;
 import java.util.UUID;
 
+import java.math.BigDecimal;
+
 import static spark.Spark.get;
 import static spark.Spark.post;
+import static spark.Spark.put;
 
 
 public class AccountController {
@@ -44,6 +47,23 @@ public class AccountController {
             var wallets = accountService.getWallets(id);
             res.type("application/json");
             return mapper.writeValueAsString(wallets);
+        });
+
+        put("/accounts/:id/kyc/verify", (req, res) -> {
+            var id = UUID.fromString(req.params("id"));
+            var account = accountService.verifyKyc(id);
+            res.type("application/json");
+            return mapper.writeValueAsString(account);
+        });
+
+        post("/wallets/:id/deposit", (req, res) -> {
+            var walletId = UUID.fromString(req.params("id"));
+            var body = mapper.readValue(req.body(), Map.class);
+            var amount = new BigDecimal(body.get("amount").toString());
+            var wallet = accountService.deposit(walletId, amount);
+            res.type("application/json");
+            res.status(200);
+            return mapper.writeValueAsString(wallet);
         });
 
     }

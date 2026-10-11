@@ -27,7 +27,19 @@ public class AccountService {
     }
 
     public Account getAccount(UUID id) {
-        return accountRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Account not found: " + id));
+        return accountRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Account not found: " + id));
+    }
+
+    public Account verifyKyc(UUID id) {
+        accountRepository.verifyKyc(id);
+        return getAccount(id);
+    }
+
+    public Wallet deposit(UUID walletId, java.math.BigDecimal amount) {
+        walletRepository.deposit(walletId, amount);
+        return walletRepository.findById(walletId)
+            .orElseThrow(() -> new IllegalArgumentException("Wallet not found: " + walletId));
     }
 
     public List<Wallet> getWallets(UUID accountId) {

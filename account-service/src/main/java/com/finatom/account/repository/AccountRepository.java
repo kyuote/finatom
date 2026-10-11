@@ -43,6 +43,12 @@ public class AccountRepository {
             ));
     }
 
+    public void verifyKyc(UUID id) {
+        dsl.execute(
+            "UPDATE accounts SET kyc_status = 'VERIFIED'::kyc_status WHERE id = ?", id
+        );
+    }
+
     public Optional<Account> findById(UUID id) {
         return dsl.selectFrom(table("accounts"))
             .where(field("id").eq(id))
