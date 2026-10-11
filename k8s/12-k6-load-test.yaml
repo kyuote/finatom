@@ -89,7 +89,7 @@ data:
       const sender   = accounts[senderIdx];
       const receiver = accounts[receiverIdx];
       const amount   = (Math.random() * 99 + 1).toFixed(2);
-      const key      = `load-${sender.walletId}-${receiver.walletId}-${Date.now()}-${Math.random()}`;
+      const key      = `${sender.walletId.substring(0,8)}-${receiver.walletId.substring(0,8)}-${Date.now()}`;
 
       const start = Date.now();
       const res = http.post(`${PAYMENT_SVC}/payments`,
