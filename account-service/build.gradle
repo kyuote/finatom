@@ -65,6 +65,10 @@ java {
     }
 }
 
+shadowJar {
+    mergeServiceFiles()
+}
+
 test {
     useJUnitPlatform()
 }

@@ -16,6 +16,7 @@ spec:
       containers:
         - name: notification-service
           image: finatom/notification-service:latest
+          imagePullPolicy: Never
           env:
             - name: KAFKA_BOOTSTRAP_SERVERS
               valueFrom:

@@ -12,7 +12,7 @@ CREATE TABLE wallets (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     account_id  UUID NOT NULL REFERENCES accounts(id),
     currency    VARCHAR(3) NOT NULL,
-    balance     NUMERIC(19,4) NOT NULL DEFAULT 0,
+    balance     NUMERIC(19,4) NOT NULL DEFAULT 0 CHECK (balance >= 0),
     updated_at  TIMESTAMP NOT NULL DEFAULT now(),
 
     UNIQUE (account_id, currency)

@@ -13,9 +13,31 @@ spec:
       labels:
         app: payment-service
     spec:
+      initContainers:
+        - name: wait-for-account-schema
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until PGPASSWORD=$DB_PASSWORD psql -h postgres -U $DB_USER -d finatom_ledger -c "SELECT 1 FROM wallets LIMIT 1;" > /dev/null 2>&1; do
+                echo "Waiting for wallets table..."; sleep 3;
+              done
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: finatom-db-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: finatom-db-secret
+                  key: password
       containers:
         - name: payment-service
           image: finatom/payment-service:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8082
           env:

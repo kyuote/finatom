@@ -16,6 +16,7 @@ spec:
       containers:
         - name: account-service
           image: finatom/account-service:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8081
             - containerPort: 9091

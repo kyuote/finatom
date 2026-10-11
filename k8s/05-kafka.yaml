@@ -13,6 +13,7 @@ spec:
       labels:
         app: kafka
     spec:
+      enableServiceLinks: false
       containers:
         - name: kafka
           image: confluentinc/cp-kafka:7.6.1
@@ -28,7 +29,7 @@ spec:
             - name: KAFKA_ADVERTISED_LISTENERS
               value: "PLAINTEXT://kafka:9092"
             - name: KAFKA_CONTROLLER_QUORUM_VOTERS
-              value: "1@kafka:9093"
+              value: "1@localhost:9093"
             - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
               value: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
             - name: KAFKA_CONTROLLER_LISTENER_NAMES
@@ -38,7 +39,9 @@ spec:
             - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
               value: "1"
             - name: CLUSTER_ID
-              value: "finatom-kafka-cluster-1"
+              value: "5zm93T5dQp2WCkeSZOIgnA"
+            - name: KAFKA_LOG_DIRS
+              value: "/var/lib/kafka/data"
           resources:
             requests:
               memory: "512Mi"
