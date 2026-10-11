@@ -1,73 +1,121 @@
 package com.finatom.payment.service;
 
-import com.finatom.payment.domain.CreateLedgerEntryCommand;
-import com.finatom.payment.domain.CreatePaymentCommand;
 import com.finatom.payment.domain.EntryType;
 import com.finatom.payment.domain.Payment;
 import com.finatom.payment.domain.PaymentStatus;
-import com.finatom.payment.repository.LedgerRepository;
-import com.finatom.payment.repository.PaymentRepository;
+import com.finatom.payment.domain.Wallet;
 import com.finatom.payment.repository.WalletRepository;
+import org.jooq.DSLContext;
+import org.jooq.impl.DSL;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.util.UUID;
+
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.table;
 
 public class PaymentService {
 
-    private final PaymentRepository paymentRepository;
-    private final LedgerRepository ledgerRepository;
+    private final DSLContext dsl;
     private final WalletRepository walletRepository;
     private final IdempotencyService idempotencyService;
     private final ExchangeRateService exchangeRateService;
 
-    public PaymentService(PaymentRepository paymentRepository,
-                          LedgerRepository ledgerRepository,
+    public PaymentService(DSLContext dsl,
                           WalletRepository walletRepository,
                           IdempotencyService idempotencyService,
                           ExchangeRateService exchangeRateService) {
-        this.paymentRepository   = paymentRepository;
-        this.ledgerRepository    = ledgerRepository;
-        this.walletRepository    = walletRepository;
-        this.idempotencyService  = idempotencyService;
+        this.dsl = dsl;
+        this.walletRepository = walletRepository;
+        this.idempotencyService = idempotencyService;
         this.exchangeRateService = exchangeRateService;
     }
 
     public Payment createPayment(UUID fromWalletId, UUID toWalletId,
                                  BigDecimal amount, String currency, String idempotencyKey) {
         if (idempotencyService.exists(idempotencyKey)) {
-            return paymentRepository.findByIdempotencyKey(idempotencyKey).orElseThrow();
+            return findPaymentByKey(dsl, idempotencyKey);
         }
 
-        var fromWallet = walletRepository.findById(fromWalletId)
+        Wallet fromWallet = walletRepository.findById(fromWalletId)
             .orElseThrow(() -> new IllegalArgumentException("Wallet not found: " + fromWalletId));
-
-        var toWallet = walletRepository.findById(toWalletId)
+        Wallet toWallet = walletRepository.findById(toWalletId)
             .orElseThrow(() -> new IllegalArgumentException("Wallet not found: " + toWalletId));
 
-        // convert amount if wallet currencies differ
+        // network call outside the transaction — don't hold a DB connection open for this
         BigDecimal convertedAmount = exchangeRateService.convert(amount, currency, toWallet.currency());
 
-        // check sufficient funds
+        // fast-fail before acquiring any locks
         if (fromWallet.balance().compareTo(amount) < 0) {
             throw new IllegalStateException("Insufficient funds");
         }
 
-        var payment = paymentRepository.save(
-            new CreatePaymentCommand(fromWalletId, toWalletId, amount, currency, idempotencyKey)
-        );
+        Payment payment = dsl.transactionResult(ctx -> {
+            DSLContext tx = DSL.using(ctx);
 
-        // double-entry bookkeeping
-        ledgerRepository.save(new CreateLedgerEntryCommand(fromWalletId, amount.negate(), EntryType.DEBIT, payment.id()));
-        ledgerRepository.save(new CreateLedgerEntryCommand(toWalletId, convertedAmount, EntryType.CREDIT, payment.id()));
+            // re-read balance under a row lock to close the TOCTOU window
+            BigDecimal lockedBalance = tx.select(field("balance"))
+                .from(table("wallets"))
+                .where(field("id").eq(fromWalletId))
+                .forUpdate()
+                .fetchOne(r -> r.get(field("balance"), BigDecimal.class));
 
-        // update wallet balances
-        walletRepository.debit(fromWalletId, amount);
-        walletRepository.credit(toWalletId, convertedAmount);
+            if (lockedBalance.compareTo(amount) < 0) {
+                throw new IllegalStateException("Insufficient funds");
+            }
 
-        paymentRepository.updateStatus(payment.id(), PaymentStatus.COMPLETED);
+            tx.insertInto(table("payments"))
+                .columns(
+                    field("from_wallet_id"), field("to_wallet_id"),
+                    field("amount"), field("currency"), field("idempotency_key")
+                )
+                .values(fromWalletId, toWalletId, amount, currency, idempotencyKey)
+                .execute();
 
+            UUID paymentId = tx.select(field("id"))
+                .from(table("payments"))
+                .where(field("idempotency_key").eq(idempotencyKey))
+                .fetchOne(r -> r.get(field("id"), UUID.class));
+
+            tx.execute(
+                "INSERT INTO ledger (wallet_id, amount, type, payment_id) VALUES (?, ?, ?::entry_type, ?)",
+                fromWalletId, amount.negate(), EntryType.DEBIT.name(), paymentId
+            );
+            tx.execute(
+                "INSERT INTO ledger (wallet_id, amount, type, payment_id) VALUES (?, ?, ?::entry_type, ?)",
+                toWalletId, convertedAmount, EntryType.CREDIT.name(), paymentId
+            );
+
+            tx.execute("UPDATE wallets SET balance = balance - ?, updated_at = now() WHERE id = ?",
+                amount, fromWalletId);
+            tx.execute("UPDATE wallets SET balance = balance + ?, updated_at = now() WHERE id = ?",
+                convertedAmount, toWalletId);
+
+            tx.execute("UPDATE payments SET status = ?::payment_status WHERE id = ?",
+                PaymentStatus.COMPLETED.name(), paymentId);
+
+            return findPaymentByKey(tx, idempotencyKey);
+        });
+
+        // best-effort: if Redis is down the payment still completed
         idempotencyService.store(idempotencyKey, payment.id().toString());
 
-        return paymentRepository.findByIdempotencyKey(idempotencyKey).orElseThrow();
+        return payment;
+    }
+
+    private Payment findPaymentByKey(DSLContext ctx, String idempotencyKey) {
+        return ctx.selectFrom(table("payments"))
+            .where(field("idempotency_key").eq(idempotencyKey))
+            .fetchOne(r -> new Payment(
+                r.get(field("id"), UUID.class),
+                r.get(field("from_wallet_id"), UUID.class),
+                r.get(field("to_wallet_id"), UUID.class),
+                r.get(field("amount"), BigDecimal.class),
+                r.get(field("currency"), String.class),
+                PaymentStatus.valueOf(r.get(field("status"), String.class)),
+                r.get(field("idempotency_key"), String.class),
+                r.get(field("created_at"), Timestamp.class).toLocalDateTime()
+            ));
     }
 }

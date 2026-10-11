@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.finatom.payment.controller.PaymentController;
-import com.finatom.payment.repository.LedgerRepository;
-import com.finatom.payment.repository.PaymentRepository;
 import com.finatom.payment.repository.WalletRepository;
 import com.finatom.payment.service.ExchangeRateService;
 import com.finatom.payment.service.IdempotencyService;
@@ -15,6 +13,9 @@ import com.typesafe.config.ConfigFactory;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
+import org.jooq.DSLContext;
+import org.jooq.SQLDialect;
+import org.jooq.impl.DSL;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
@@ -45,15 +46,14 @@ public class PaymentApplication {
             cfg.getInt("redis.port")
         );
 
-        PaymentRepository paymentRepository   = new PaymentRepository(dataSource);
-        LedgerRepository ledgerRepository     = new LedgerRepository(dataSource);
+        DSLContext dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
+
         WalletRepository walletRepository     = new WalletRepository(dataSource);
         IdempotencyService idempotencyService = new IdempotencyService(jedisPool);
-        ExchangeRateService exchangeRateService = new ExchangeRateService();
+        ExchangeRateService exchangeRateService = new ExchangeRateService(jedisPool);
 
         PaymentService paymentService = new PaymentService(
-            paymentRepository, ledgerRepository, walletRepository,
-            idempotencyService, exchangeRateService
+            dsl, walletRepository, idempotencyService, exchangeRateService
         );
 
         ObjectMapper mapper = new ObjectMapper()
