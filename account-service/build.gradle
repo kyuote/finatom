@@ -41,6 +41,11 @@ dependencies {
     testImplementation 'org.spockframework:spock-core'
     testImplementation 'org.apache.groovy:groovy'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    testImplementation platform('org.testcontainers:testcontainers-bom:1.19.8')
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:spock'
 }
 
 protobuf {
