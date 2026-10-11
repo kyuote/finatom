@@ -2,9 +2,12 @@ package com.finatom.account.service;
 
 import com.finatom.account.domain.Account;
 import com.finatom.account.domain.Wallet;
+import com.finatom.account.exception.AccountNotFoundException;
+import com.finatom.account.exception.WalletNotFoundException;
 import com.finatom.account.repository.AccountRepository;
 import com.finatom.account.repository.WalletRepository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,8 +30,7 @@ public class AccountService {
     }
 
     public Account getAccount(UUID id) {
-        return accountRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Account not found: " + id));
+        return accountRepository.findById(id).orElseThrow(() -> new AccountNotFoundException(id));
     }
 
     public Account verifyKyc(UUID id) {
@@ -36,14 +38,13 @@ public class AccountService {
         return getAccount(id);
     }
 
-    public Wallet deposit(UUID walletId, java.math.BigDecimal amount) {
+    public Wallet deposit(UUID walletId, BigDecimal amount) {
         walletRepository.deposit(walletId, amount);
         return walletRepository.findById(walletId)
-            .orElseThrow(() -> new IllegalArgumentException("Wallet not found: " + walletId));
+            .orElseThrow(() -> new WalletNotFoundException(walletId));
     }
 
     public List<Wallet> getWallets(UUID accountId) {
         return walletRepository.findByAccountId(accountId);
     }
 }
-

@@ -5,6 +5,8 @@ import com.finatom.payment.domain.EntryType;
 import com.finatom.payment.domain.Payment;
 import com.finatom.payment.domain.PaymentCompletedEvent;
 import com.finatom.payment.domain.PaymentStatus;
+import com.finatom.payment.exception.InsufficientFundsException;
+import com.finatom.payment.exception.WalletNotFoundException;
 import com.finatom.payment.messaging.PaymentEventPublisher;
 import com.finatom.payment.metrics.PaymentMetrics;
 import com.finatom.payment.repository.WalletRepository;
@@ -68,15 +70,15 @@ public class PaymentService {
         kycValidator.validateKyc(toWalletId);
 
         var from = walletRepository.findById(fromWalletId)
-            .orElseThrow(() -> new IllegalArgumentException("Wallet not found: " + fromWalletId));
+            .orElseThrow(() -> new WalletNotFoundException(fromWalletId));
         var to = walletRepository.findById(toWalletId)
-            .orElseThrow(() -> new IllegalArgumentException("Wallet not found: " + toWalletId));
+            .orElseThrow(() -> new WalletNotFoundException(toWalletId));
 
         BigDecimal converted = exchangeRateService.convert(amount, currency, to.currency());
 
         if (from.balance().compareTo(amount) < 0) {
             metrics.recordFailed();
-            throw new IllegalStateException("Insufficient funds");
+            throw new InsufficientFundsException(fromWalletId, from.balance(), amount);
         }
 
         return transfer(fromWalletId, toWalletId, amount, converted, currency, idempotencyKey);
@@ -141,7 +143,7 @@ public class PaymentService {
             "UPDATE wallets SET balance = balance - ?, updated_at = now() WHERE id = ? AND balance >= ?",
             amount, walletId, amount
         );
-        if (rows == 0) throw new IllegalStateException("Insufficient funds");
+        if (rows == 0) throw new InsufficientFundsException(walletId, BigDecimal.ZERO, amount);
     }
 
     private void credit(DSLContext tx, UUID walletId, BigDecimal amount) {
