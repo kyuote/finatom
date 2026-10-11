@@ -42,6 +42,25 @@ public class WalletRepository {
             ));
     }
 
+    public void deposit(UUID walletId, BigDecimal amount) {
+        dsl.execute(
+            "UPDATE wallets SET balance = balance + ?, updated_at = now() WHERE id = ?",
+            amount, walletId
+        );
+    }
+
+    public Optional<Wallet> findById(UUID walletId) {
+        return dsl.selectFrom(table("wallets"))
+            .where(field("id").eq(walletId))
+            .fetchOptional(r -> new Wallet(
+                r.get(field("id"), UUID.class),
+                r.get(field("account_id"), UUID.class),
+                r.get(field("currency"), String.class),
+                r.get(field("balance"), BigDecimal.class),
+                r.get(field("updated_at"), Timestamp.class).toLocalDateTime()
+            ));
+    }
+
     public List<Wallet> findByAccountId(UUID accountId) {
         return dsl.selectFrom(table("wallets"))
             .where(field("account_id").eq(accountId))
