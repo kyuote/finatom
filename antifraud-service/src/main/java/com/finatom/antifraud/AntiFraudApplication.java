@@ -9,8 +9,6 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.flywaydb.core.Flyway;
-
 import java.util.Properties;
 
 public class AntiFraudApplication {
@@ -24,12 +22,6 @@ public class AntiFraudApplication {
         hikariConfig.setPassword(cfg.getString("db.password"));
         hikariConfig.setMaximumPoolSize(cfg.getInt("db.pool-size"));
         HikariDataSource dataSource = new HikariDataSource(hikariConfig);
-
-        Flyway.configure()
-            .dataSource(dataSource)
-            .ignoreMigrationPatterns("*:missing")
-            .load()
-            .migrate();
 
         Properties kafkaProps = new Properties();
         kafkaProps.put("bootstrap.servers", cfg.getString("kafka.bootstrap-servers"));

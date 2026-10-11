@@ -3,6 +3,7 @@ plugins {
     id 'groovy'
     id 'application'
     id 'com.google.protobuf' version '0.9.4'
+    id 'io.github.goooler.shadow' version '8.1.8'
 }
 
 application {
@@ -63,6 +64,10 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
+}
+
+shadowJar {
+    mergeServiceFiles()
 }
 
 test {

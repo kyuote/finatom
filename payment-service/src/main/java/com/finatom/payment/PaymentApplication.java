@@ -16,7 +16,6 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.flywaydb.core.Flyway;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
@@ -24,6 +23,7 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
 import static spark.Spark.exception;
+import static spark.Spark.get;
 import static spark.Spark.port;
 
 public class PaymentApplication {
@@ -37,12 +37,6 @@ public class PaymentApplication {
         hikariConfig.setPassword(cfg.getString("db.password"));
         hikariConfig.setMaximumPoolSize(cfg.getInt("db.pool-size"));
         HikariDataSource dataSource = new HikariDataSource(hikariConfig);
-
-        Flyway.configure()
-            .dataSource(dataSource)
-            .ignoreMigrationPatterns("*:missing")
-            .load()
-            .migrate();
 
         JedisPool jedisPool = new JedisPool(
             new JedisPoolConfig(),
@@ -79,6 +73,7 @@ public class PaymentApplication {
         PaymentController controller = new PaymentController(paymentService, mapper);
 
         port(cfg.getInt("server.port"));
+        get("/health", (req, res) -> "OK");
         exception(Exception.class, (e, req, res) -> {
             e.printStackTrace();
             res.status(500);

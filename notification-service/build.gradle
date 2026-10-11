@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'groovy'
     id 'application'
+    id 'io.github.goooler.shadow' version '8.1.8'
 }
 
 application {
