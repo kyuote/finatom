@@ -26,7 +26,7 @@ public class PaymentController {
             var payment = paymentService.createPayment(
                 UUID.fromString((String) body.get("fromWalletId")),
                 UUID.fromString((String) body.get("toWalletId")),
-                new BigDecimal((String) body.get("amount")),
+                new BigDecimal(body.get("amount").toString()),
                 (String) body.get("currency"),
                 (String) body.get("idempotencyKey")
             );
