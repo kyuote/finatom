@@ -3,6 +3,7 @@ package com.finatom.payment;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.finatom.payment.client.AccountServiceClient;
 import com.finatom.payment.controller.PaymentController;
 import com.finatom.payment.repository.WalletRepository;
 import com.finatom.payment.service.ExchangeRateService;
@@ -48,12 +49,16 @@ public class PaymentApplication {
 
         DSLContext dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
 
-        WalletRepository walletRepository     = new WalletRepository(dataSource);
-        IdempotencyService idempotencyService = new IdempotencyService(jedisPool);
+        WalletRepository walletRepository       = new WalletRepository(dataSource);
+        IdempotencyService idempotencyService   = new IdempotencyService(jedisPool);
         ExchangeRateService exchangeRateService = new ExchangeRateService(jedisPool);
+        AccountServiceClient accountServiceClient = new AccountServiceClient(
+            cfg.getString("account-service.grpc-host"),
+            cfg.getInt("account-service.grpc-port")
+        );
 
         PaymentService paymentService = new PaymentService(
-            dsl, walletRepository, idempotencyService, exchangeRateService
+            dsl, walletRepository, idempotencyService, exchangeRateService, accountServiceClient
         );
 
         ObjectMapper mapper = new ObjectMapper()

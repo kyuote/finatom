@@ -1,5 +1,6 @@
 package com.finatom.payment
 
+import com.finatom.payment.client.KycValidator
 import com.finatom.payment.domain.Payment
 import com.finatom.payment.domain.PaymentStatus
 import com.finatom.payment.domain.Wallet
@@ -20,9 +21,10 @@ class PaymentServiceSpec extends Specification {
     WalletRepository walletRepository        = Mock()
     IdempotencyService idempotencyService    = Mock()
     ExchangeRateService exchangeRateService  = Mock()
+    KycValidator kycValidator = Mock()
 
     PaymentService paymentService = new PaymentService(
-        dsl, walletRepository, idempotencyService, exchangeRateService
+        dsl, walletRepository, idempotencyService, exchangeRateService, kycValidator
     )
 
     def fromWalletId = UUID.randomUUID()

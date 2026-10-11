@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package finatom.account.v1;
+
+option java_package = "com.finatom.account.grpc";
+option java_multiple_files = true;
+
+service WalletValidationService {
+  rpc ValidateWallet (ValidateWalletRequest) returns (ValidateWalletResponse);
+}
+
+message ValidateWalletRequest {
+  string wallet_id = 1;
+}
+
+message ValidateWalletResponse {
+  string account_id = 1;
+  string kyc_status = 2;
+}

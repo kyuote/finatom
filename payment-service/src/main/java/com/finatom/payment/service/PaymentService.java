@@ -1,5 +1,6 @@
 package com.finatom.payment.service;
 
+import com.finatom.payment.client.KycValidator;
 import com.finatom.payment.domain.EntryType;
 import com.finatom.payment.domain.Payment;
 import com.finatom.payment.domain.PaymentStatus;
@@ -23,15 +24,18 @@ public class PaymentService {
     private final WalletRepository walletRepository;
     private final IdempotencyService idempotencyService;
     private final ExchangeRateService exchangeRateService;
+    private final KycValidator kycValidator;
 
     public PaymentService(DSLContext dsl,
                           WalletRepository walletRepository,
                           IdempotencyService idempotencyService,
-                          ExchangeRateService exchangeRateService) {
+                          ExchangeRateService exchangeRateService,
+                          KycValidator kycValidator) {
         this.dsl = dsl;
         this.walletRepository = walletRepository;
         this.idempotencyService = idempotencyService;
         this.exchangeRateService = exchangeRateService;
+        this.kycValidator = kycValidator;
     }
 
     public Payment createPayment(UUID fromWalletId, UUID toWalletId,
@@ -39,6 +43,9 @@ public class PaymentService {
         if (idempotencyService.exists(idempotencyKey)) {
             return findPaymentByKey(dsl, idempotencyKey);
         }
+
+        kycValidator.validateKyc(fromWalletId);
+        kycValidator.validateKyc(toWalletId);
 
         var from = walletRepository.findById(fromWalletId)
             .orElseThrow(() -> new IllegalArgumentException("Wallet not found: " + fromWalletId));
