@@ -19,6 +19,8 @@ import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
 
+import static spark.Spark.after;
+import static spark.Spark.before;
 import static spark.Spark.exception;
 import static spark.Spark.get;
 import static spark.Spark.port;
@@ -58,6 +60,10 @@ public class AccountApplication {
         Runtime.getRuntime().addShutdownHook(new Thread(grpcServer::shutdown));
 
         port(cfg.getInt("server.port"));
+        before((req, res) -> req.attribute("t", System.currentTimeMillis()));
+        after((req, res) -> System.out.printf("[account-service] %s %s -> %d (%dms)%n",
+            req.requestMethod(), req.pathInfo(), res.status(),
+            System.currentTimeMillis() - (long) req.attribute("t")));
         get("/health", (req, res) -> "OK");
         exception(Exception.class, (e, req, res) -> {
             e.printStackTrace();

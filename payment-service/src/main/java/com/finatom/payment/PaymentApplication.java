@@ -29,6 +29,8 @@ import org.jooq.impl.DSL;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
+import static spark.Spark.after;
+import static spark.Spark.before;
 import static spark.Spark.exception;
 import static spark.Spark.get;
 import static spark.Spark.port;
@@ -87,6 +89,10 @@ public class PaymentApplication {
         PaymentController controller = new PaymentController(paymentService, mapper);
 
         port(cfg.getInt("server.port"));
+        before((req, res) -> req.attribute("t", System.currentTimeMillis()));
+        after((req, res) -> System.out.printf("[payment-service] %s %s -> %d (%dms)%n",
+            req.requestMethod(), req.pathInfo(), res.status(),
+            System.currentTimeMillis() - (long) req.attribute("t")));
         get("/health", (req, res) -> "OK");
         get("/metrics", (req, res) -> {
             res.type("text/plain; version=0.0.4");
