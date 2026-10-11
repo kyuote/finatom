@@ -48,6 +48,7 @@ load-test:
 		-e PAYMENT_SVC=http://host.docker.internal:8082 \
 		-v $(PWD)/k6:/k6 \
 		grafana/k6 run /k6/load-test.js
+	@echo "Requires: make port-forward to be running first"
 
 # ── Logs ───────────────────────────────────────────────────────────────────────
 
