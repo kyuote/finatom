@@ -6,7 +6,9 @@ import com.finatom.payment.domain.Payment;
 import com.finatom.payment.domain.PaymentCompletedEvent;
 import com.finatom.payment.domain.PaymentStatus;
 import com.finatom.payment.messaging.PaymentEventPublisher;
+import com.finatom.payment.metrics.PaymentMetrics;
 import com.finatom.payment.repository.WalletRepository;
+import io.micrometer.core.instrument.Timer;
 import org.jooq.DSLContext;
 import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
@@ -28,23 +30,36 @@ public class PaymentService {
     private final ExchangeRateService exchangeRateService;
     private final KycValidator kycValidator;
     private final PaymentEventPublisher eventPublisher;
+    private final PaymentMetrics metrics;
 
     public PaymentService(DSLContext dsl,
                           WalletRepository walletRepository,
                           IdempotencyService idempotencyService,
                           ExchangeRateService exchangeRateService,
                           KycValidator kycValidator,
-                          PaymentEventPublisher eventPublisher) {
+                          PaymentEventPublisher eventPublisher,
+                          PaymentMetrics metrics) {
         this.dsl = dsl;
         this.walletRepository = walletRepository;
         this.idempotencyService = idempotencyService;
         this.exchangeRateService = exchangeRateService;
         this.kycValidator = kycValidator;
         this.eventPublisher = eventPublisher;
+        this.metrics = metrics;
     }
 
     public Payment createPayment(UUID fromWalletId, UUID toWalletId,
                                  BigDecimal amount, String currency, String idempotencyKey) {
+        Timer.Sample sample = Timer.start();
+        try {
+            return doCreatePayment(fromWalletId, toWalletId, amount, currency, idempotencyKey);
+        } finally {
+            sample.stop(metrics.processingTimer());
+        }
+    }
+
+    private Payment doCreatePayment(UUID fromWalletId, UUID toWalletId,
+                                    BigDecimal amount, String currency, String idempotencyKey) {
         if (idempotencyService.exists(idempotencyKey)) {
             return findPaymentByKey(dsl, idempotencyKey);
         }
@@ -60,6 +75,7 @@ public class PaymentService {
         BigDecimal converted = exchangeRateService.convert(amount, currency, to.currency());
 
         if (from.balance().compareTo(amount) < 0) {
+            metrics.recordFailed();
             throw new IllegalStateException("Insufficient funds");
         }
 
@@ -84,9 +100,11 @@ public class PaymentService {
             eventPublisher.publish(new PaymentCompletedEvent(
                 payment.id(), fromWalletId, toWalletId, amount, currency, payment.createdAt()
             ));
+            metrics.recordCompleted();
             return payment;
         } catch (DataAccessException e) {
             if (isUniqueViolation(e)) return findPaymentByKey(dsl, idempotencyKey);
+            metrics.recordFailed();
             throw e;
         }
     }

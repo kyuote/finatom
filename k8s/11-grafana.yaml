@@ -1,0 +1,181 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: finatom
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus:9090
+        isDefault: true
+        editable: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-config
+  namespace: finatom
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: finatom
+        folder: FinAtom
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-finatom
+  namespace: finatom
+data:
+  finatom.json: |
+    {
+      "title": "FinAtom — Payment Platform",
+      "uid": "finatom-payments",
+      "schemaVersion": 38,
+      "time": {"from": "now-1h", "to": "now"},
+      "refresh": "10s",
+      "panels": [
+        {
+          "id": 1, "type": "stat", "title": "Completed Payments (total)",
+          "gridPos": {"x":0,"y":0,"w":4,"h":4},
+          "targets": [{"expr": "payments_completed_total", "legendFormat": "completed"}],
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "green"}}}
+        },
+        {
+          "id": 2, "type": "stat", "title": "Failed Payments (total)",
+          "gridPos": {"x":4,"y":0,"w":4,"h":4},
+          "targets": [{"expr": "payments_failed_total", "legendFormat": "failed"}],
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "red"}}}
+        },
+        {
+          "id": 3, "type": "stat", "title": "Fraud Alerts (total)",
+          "gridPos": {"x":8,"y":0,"w":4,"h":4},
+          "targets": [{"expr": "sum(fraud_alerts_total)", "legendFormat": "alerts"}],
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "orange"}}}
+        },
+        {
+          "id": 4, "type": "timeseries", "title": "Payment Throughput (req/s)",
+          "gridPos": {"x":0,"y":4,"w":12,"h":8},
+          "targets": [
+            {"expr": "rate(payments_completed_total[1m])", "legendFormat": "completed/s"},
+            {"expr": "rate(payments_failed_total[1m])", "legendFormat": "failed/s"}
+          ]
+        },
+        {
+          "id": 5, "type": "timeseries", "title": "Payment Latency (p50 / p95 / p99)",
+          "gridPos": {"x":12,"y":4,"w":12,"h":8},
+          "targets": [
+            {"expr": "payment_processing_duration_seconds{quantile=\"0.5\"}", "legendFormat": "p50"},
+            {"expr": "payment_processing_duration_seconds{quantile=\"0.95\"}", "legendFormat": "p95"},
+            {"expr": "payment_processing_duration_seconds{quantile=\"0.99\"}", "legendFormat": "p99"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "s"}}
+        },
+        {
+          "id": 6, "type": "timeseries", "title": "Exchange Rate Cache Hit Rate",
+          "gridPos": {"x":0,"y":12,"w":12,"h":8},
+          "targets": [
+            {"expr": "rate(exchange_rate_cache_hits_total[5m])", "legendFormat": "hits/s"},
+            {"expr": "rate(exchange_rate_cache_misses_total[5m])", "legendFormat": "misses/s (API calls)"}
+          ]
+        },
+        {
+          "id": 7, "type": "timeseries", "title": "Fraud Alerts by Reason",
+          "gridPos": {"x":12,"y":12,"w":12,"h":8},
+          "targets": [
+            {"expr": "rate(fraud_alerts_total[5m])", "legendFormat": "{{reason}}"}
+          ]
+        },
+        {
+          "id": 8, "type": "timeseries", "title": "JVM Heap — payment-service",
+          "gridPos": {"x":0,"y":20,"w":12,"h":8},
+          "targets": [
+            {"expr": "jvm_memory_used_bytes{job=\"payment-service\", area=\"heap\"}", "legendFormat": "heap used"},
+            {"expr": "jvm_memory_max_bytes{job=\"payment-service\", area=\"heap\"}", "legendFormat": "heap max"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "bytes"}}
+        },
+        {
+          "id": 9, "type": "timeseries", "title": "JVM Heap — antifraud-service",
+          "gridPos": {"x":12,"y":20,"w":12,"h":8},
+          "targets": [
+            {"expr": "jvm_memory_used_bytes{job=\"antifraud-service\", area=\"heap\"}", "legendFormat": "heap used"},
+            {"expr": "jvm_memory_max_bytes{job=\"antifraud-service\", area=\"heap\"}", "legendFormat": "heap max"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "bytes"}}
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: finatom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:10.4.2
+          ports:
+            - containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: "finatom"
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: "Viewer"
+          volumeMounts:
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboards-config
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboard-finatom
+              mountPath: /var/lib/grafana/dashboards
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+      volumes:
+        - name: datasources
+          configMap:
+            name: grafana-datasources
+        - name: dashboards-config
+          configMap:
+            name: grafana-dashboards-config
+        - name: dashboard-finatom
+          configMap:
+            name: grafana-dashboard-finatom
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: finatom
+spec:
+  selector:
+    app: grafana
+  ports:
+    - port: 3000

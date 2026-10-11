@@ -38,6 +38,8 @@ spec:
         - name: antifraud-service
           image: finatom/antifraud-service:latest
           imagePullPolicy: Never
+          ports:
+            - containerPort: 8083
           env:
             - name: DB_URL
               valueFrom:
@@ -66,3 +68,14 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "300m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: antifraud-service
+  namespace: finatom
+spec:
+  selector:
+    app: antifraud-service
+  ports:
+    - port: 8083
