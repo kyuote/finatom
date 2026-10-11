@@ -4,6 +4,8 @@ import com.finatom.payment.client.KycValidator
 import com.finatom.payment.domain.Payment
 import com.finatom.payment.domain.PaymentStatus
 import com.finatom.payment.domain.Wallet
+import com.finatom.payment.exception.InsufficientFundsException
+import com.finatom.payment.exception.WalletNotFoundException
 import com.finatom.payment.messaging.PaymentEventPublisher
 import com.finatom.payment.metrics.PaymentMetrics
 import com.finatom.payment.repository.WalletRepository
@@ -63,7 +65,7 @@ class PaymentServiceSpec extends Specification {
         0 * walletRepository._
     }
 
-    def "throws IllegalArgumentException when source wallet not found"() {
+    def "throws WalletNotFoundException when source wallet not found"() {
         given:
         idempotencyService.exists("key-123") >> false
         walletRepository.findById(fromWalletId) >> Optional.empty()
@@ -73,11 +75,11 @@ class PaymentServiceSpec extends Specification {
             new BigDecimal("100.00"), "USD", "key-123")
 
         then:
-        def ex = thrown(IllegalArgumentException)
+        def ex = thrown(WalletNotFoundException)
         ex.message.contains(fromWalletId.toString())
     }
 
-    def "throws IllegalArgumentException when destination wallet not found"() {
+    def "throws WalletNotFoundException when destination wallet not found"() {
         given:
         idempotencyService.exists("key-123") >> false
         walletRepository.findById(fromWalletId) >> Optional.of(fromWallet)
@@ -88,11 +90,11 @@ class PaymentServiceSpec extends Specification {
             new BigDecimal("100.00"), "USD", "key-123")
 
         then:
-        def ex = thrown(IllegalArgumentException)
+        def ex = thrown(WalletNotFoundException)
         ex.message.contains(toWalletId.toString())
     }
 
-    def "throws IllegalStateException on insufficient funds before opening transaction"() {
+    def "throws InsufficientFundsException on insufficient funds before opening transaction"() {
         given:
         def poorWallet = new Wallet(fromWalletId, UUID.randomUUID(), "USD",
             new BigDecimal("50.00"), LocalDateTime.now())
@@ -107,7 +109,7 @@ class PaymentServiceSpec extends Specification {
             new BigDecimal("100.00"), "USD", "key-123")
 
         then:
-        thrown(IllegalStateException)
+        thrown(InsufficientFundsException)
         0 * dsl.transactionResult(_)
     }
 

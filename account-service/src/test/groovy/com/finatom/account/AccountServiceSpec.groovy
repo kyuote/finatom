@@ -3,6 +3,7 @@ package com.finatom.account
 import com.finatom.account.domain.Account
 import com.finatom.account.domain.KycStatus
 import com.finatom.account.domain.Wallet
+import com.finatom.account.exception.AccountNotFoundException
 import com.finatom.account.repository.AccountRepository
 import com.finatom.account.repository.WalletRepository
 import com.finatom.account.service.AccountService
@@ -52,7 +53,7 @@ class AccountServiceSpec extends Specification {
         accountService.getAccount(id)
 
         then:
-        thrown(IllegalArgumentException)
+        thrown(AccountNotFoundException)
     }
 
     def "getAccount returns account when found"() {
