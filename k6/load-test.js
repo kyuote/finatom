@@ -2,8 +2,8 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
 
-const ACCOUNT_SVC = 'http://account-service:8081';
-const PAYMENT_SVC = 'http://payment-service:8082';
+const ACCOUNT_SVC = __ENV.ACCOUNT_SVC || 'http://account-service:8081';
+const PAYMENT_SVC = __ENV.PAYMENT_SVC || 'http://payment-service:8082';
 
 // Custom metrics
 const paymentErrors  = new Counter('payment_errors');
