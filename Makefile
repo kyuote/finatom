@@ -6,7 +6,7 @@ build:
 	./gradlew shadowJar -x test
 
 test:
-	./gradlew test
+	./gradlew :account-service:test :payment-service:test
 
 # ── Docker ─────────────────────────────────────────────────────────────────────
 
@@ -35,10 +35,10 @@ status:
 port-forward:
 	kubectl port-forward -n finatom svc/account-service 8081:8081 &
 	kubectl port-forward -n finatom svc/payment-service 8082:8082 &
-	kubectl port-forward -n finatom svc/grafana 3000:3000 &
 	@echo "account-service → http://localhost:8081"
 	@echo "payment-service → http://localhost:8082"
-	@echo "grafana         → http://localhost:3000"
+	@echo "grafana         → http://localhost:3000 (LoadBalancer, no port-forward needed)"
+	@echo "prometheus      → http://localhost:9090 (LoadBalancer, no port-forward needed)"
 
 # ── Load testing ───────────────────────────────────────────────────────────────
 
