@@ -265,6 +265,7 @@ make status         # show pod status
 | account-service API | http://localhost:8081 |
 | payment-service API | http://localhost:8082 |
 | Grafana dashboards | http://localhost:3000 (admin / finatom) |
+| Prometheus | http://localhost:9090 |
 
 ---
 
