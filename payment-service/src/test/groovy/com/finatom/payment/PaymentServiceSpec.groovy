@@ -4,6 +4,7 @@ import com.finatom.payment.client.KycValidator
 import com.finatom.payment.domain.Payment
 import com.finatom.payment.domain.PaymentStatus
 import com.finatom.payment.domain.Wallet
+import com.finatom.payment.messaging.PaymentEventPublisher
 import com.finatom.payment.repository.WalletRepository
 import com.finatom.payment.service.ExchangeRateService
 import com.finatom.payment.service.IdempotencyService
@@ -21,10 +22,11 @@ class PaymentServiceSpec extends Specification {
     WalletRepository walletRepository        = Mock()
     IdempotencyService idempotencyService    = Mock()
     ExchangeRateService exchangeRateService  = Mock()
-    KycValidator kycValidator = Mock()
+    KycValidator kycValidator            = Mock()
+    PaymentEventPublisher eventPublisher = Mock()
 
     PaymentService paymentService = new PaymentService(
-        dsl, walletRepository, idempotencyService, exchangeRateService, kycValidator
+        dsl, walletRepository, idempotencyService, exchangeRateService, kycValidator, eventPublisher
     )
 
     def fromWalletId = UUID.randomUUID()
