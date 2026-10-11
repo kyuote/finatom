@@ -4,6 +4,7 @@ import com.finatom.antifraud.domain.AlertReason
 import com.finatom.antifraud.domain.PaymentCompletedEvent
 import com.finatom.antifraud.repository.FraudAlertRepository
 import com.finatom.antifraud.service.FraudDetectionService
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import spock.lang.Specification
 
 import java.time.LocalDateTime
@@ -11,7 +12,7 @@ import java.time.LocalDateTime
 class FraudDetectionServiceSpec extends Specification {
 
     FraudAlertRepository alertRepository   = Mock()
-    FraudDetectionService fraudService     = new FraudDetectionService(alertRepository)
+    FraudDetectionService fraudService     = new FraudDetectionService(alertRepository, new SimpleMeterRegistry())
 
     def paymentId    = UUID.randomUUID()
     def fromWalletId = UUID.randomUUID()

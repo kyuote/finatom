@@ -5,10 +5,12 @@ import com.finatom.payment.domain.Payment
 import com.finatom.payment.domain.PaymentStatus
 import com.finatom.payment.domain.Wallet
 import com.finatom.payment.messaging.PaymentEventPublisher
+import com.finatom.payment.metrics.PaymentMetrics
 import com.finatom.payment.repository.WalletRepository
 import com.finatom.payment.service.ExchangeRateService
 import com.finatom.payment.service.IdempotencyService
 import com.finatom.payment.service.PaymentService
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.jooq.DSLContext
 import spock.lang.Specification
 
@@ -22,11 +24,13 @@ class PaymentServiceSpec extends Specification {
     WalletRepository walletRepository        = Mock()
     IdempotencyService idempotencyService    = Mock()
     ExchangeRateService exchangeRateService  = Mock()
-    KycValidator kycValidator            = Mock()
-    PaymentEventPublisher eventPublisher = Mock()
+    KycValidator kycValidator                = Mock()
+    PaymentEventPublisher eventPublisher     = Mock()
+    PaymentMetrics paymentMetrics            = new PaymentMetrics(new SimpleMeterRegistry())
 
     PaymentService paymentService = new PaymentService(
-        dsl, walletRepository, idempotencyService, exchangeRateService, kycValidator, eventPublisher
+        dsl, walletRepository, idempotencyService, exchangeRateService,
+        kycValidator, eventPublisher, paymentMetrics
     )
 
     def fromWalletId = UUID.randomUUID()
