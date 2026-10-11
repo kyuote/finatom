@@ -248,40 +248,31 @@ POST   /payments                  Create payment (idempotent)
 
 ---
 
-## Running Locally
+## Running
 
 ```bash
-# Infrastructure (PostgreSQL, Redis, Kafka)
-docker compose up -d
-
-# Build all services
-./gradlew shadowJar
-
-# Run
-java -jar account-service/build/libs/account-service-1.0-SNAPSHOT-all.jar
-java -jar payment-service/build/libs/payment-service-1.0-SNAPSHOT-all.jar
-```
-
-### Kubernetes (Docker Desktop)
-
-```bash
-make docker-build   # build all images
-make deploy         # apply k8s manifests
-make port-forward   # expose services locally
+make docker-build   # build all Docker images
+make deploy         # deploy to Kubernetes
+make port-forward   # expose services on localhost
 make load-test      # run k6 load test via Docker
 make status         # show pod status
 ```
+
+### Endpoints after `make port-forward`
+
+| Service | URL |
+|---|---|
+| account-service API | http://localhost:8081 |
+| payment-service API | http://localhost:8082 |
+| Grafana dashboards | http://localhost:3000 (admin / finatom) |
 
 ---
 
 ## Testing
 
 ```bash
-# Unit tests (Spock BDD)
+# Unit + integration tests (Spock BDD + Testcontainers)
 ./gradlew test
-
-# Integration tests (Testcontainers — real PostgreSQL + Redis)
-./gradlew :account-service:test :payment-service:test
 ```
 
 Integration tests spin up real containers and cover: balance transfers between accounts, idempotency, insufficient funds, ledger entries.
