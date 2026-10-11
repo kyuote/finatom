@@ -69,7 +69,9 @@ metadata:
   name: prometheus
   namespace: finatom
 spec:
+  type: LoadBalancer
   selector:
     app: prometheus
   ports:
     - port: 9090
+      targetPort: 9090
