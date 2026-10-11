@@ -16,6 +16,7 @@ public class PaymentApplication {
         config.accessLogFilter.register();
         config.controller.registerRoutes();
 
+        get("/health", (req, res) -> "OK");
         get("/metrics", (req, res) -> {
             res.type("text/plain; version=0.0.4");
             return config.registry.scrape();

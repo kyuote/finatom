@@ -9,11 +9,14 @@ import com.finatom.account.service.AccountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
+import java.util.Map;
 import java.util.UUID;
 
 import static spark.Spark.exception;
 import static spark.Spark.get;
 import static spark.Spark.post;
+import static spark.Spark.put;
 
 public class AccountController {
     private static final Logger log = LoggerFactory.getLogger(AccountController.class);
@@ -47,6 +50,22 @@ public class AccountController {
             var wallets = accountService.getWallets(id);
             res.type("application/json");
             return mapper.writeValueAsString(wallets);
+        });
+
+        put("/accounts/:id/kyc/verify", (req, res) -> {
+            var id = UUID.fromString(req.params("id"));
+            var account = accountService.verifyKyc(id);
+            res.type("application/json");
+            return mapper.writeValueAsString(account);
+        });
+
+        post("/wallets/:id/deposit", (req, res) -> {
+            var walletId = UUID.fromString(req.params("id"));
+            var body = mapper.readValue(req.body(), Map.class);
+            var amount = new BigDecimal(body.get("amount").toString());
+            var wallet = accountService.deposit(walletId, amount);
+            res.type("application/json");
+            return mapper.writeValueAsString(wallet);
         });
 
         registerExceptionHandlers();

@@ -7,6 +7,7 @@ import com.finatom.account.exception.WalletNotFoundException;
 import com.finatom.account.repository.AccountRepository;
 import com.finatom.account.repository.WalletRepository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,8 +33,18 @@ public class AccountService {
         return accountRepository.findById(id).orElseThrow(() -> new AccountNotFoundException(id));
     }
 
+    public Account verifyKyc(UUID id) {
+        accountRepository.verifyKyc(id);
+        return getAccount(id);
+    }
+
+    public Wallet deposit(UUID walletId, BigDecimal amount) {
+        walletRepository.deposit(walletId, amount);
+        return walletRepository.findById(walletId)
+            .orElseThrow(() -> new WalletNotFoundException(walletId));
+    }
+
     public List<Wallet> getWallets(UUID accountId) {
         return walletRepository.findByAccountId(accountId);
     }
 }
-
