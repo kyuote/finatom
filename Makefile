@@ -6,7 +6,7 @@ build:
 	./gradlew shadowJar -x test
 
 test:
-	./gradlew test
+	./gradlew :account-service:test :payment-service:test
 
 # ── Docker ─────────────────────────────────────────────────────────────────────
 

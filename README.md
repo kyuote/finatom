@@ -272,8 +272,7 @@ make status         # show pod status
 ## Testing
 
 ```bash
-# Unit + integration tests (Spock BDD + Testcontainers)
-./gradlew test
+make test   # unit + integration tests (Spock BDD + Testcontainers)
 ```
 
 Integration tests spin up real containers and cover: balance transfers between accounts, idempotency, insufficient funds, ledger entries.
