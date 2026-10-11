@@ -48,6 +48,11 @@ dependencies {
     testImplementation 'org.objenesis:objenesis:3.3'
     testImplementation 'io.micrometer:micrometer-core:1.13.0'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    testImplementation platform('org.testcontainers:testcontainers-bom:1.19.8')
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:spock'
 }
 
 protobuf {
@@ -77,5 +82,6 @@ shadowJar {
 }
 
 test {
+    systemProperty 'db.migration.path', "${rootDir}/account-service/src/main/resources/db/migration"
     useJUnitPlatform()
 }
