@@ -16,6 +16,8 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 
 import java.util.Properties;
 
+import static spark.Spark.after;
+import static spark.Spark.before;
 import static spark.Spark.get;
 import static spark.Spark.port;
 
@@ -52,6 +54,10 @@ public class AntiFraudApplication {
         Runtime.getRuntime().addShutdownHook(new Thread(consumer::stop));
 
         port(8083);
+        before((req, res) -> req.attribute("t", System.currentTimeMillis()));
+        after((req, res) -> System.out.printf("[antifraud-service] %s %s -> %d (%dms)%n",
+            req.requestMethod(), req.pathInfo(), res.status(),
+            System.currentTimeMillis() - (long) req.attribute("t")));
         get("/health", (req, res) -> "OK");
         get("/metrics", (req, res) -> {
             res.type("text/plain; version=0.0.4");
